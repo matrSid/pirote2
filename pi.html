@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pi Rote 2</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+/* ----- Base / Typography ----- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Space+Mono&display=swap');
+
+:root{
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --muted: #63738a;
+  --text: #0b1720;
+  --accent: #0b8b6f;    /* green-ish */
+  --danger: #d44b4b;
+  --glass: rgba(255,255,255,0.6);
+  --shadow: 0 8px 30px rgba(12,22,36,0.07);
+  --radius: 12px;
+  --groupSize: 5;
+  --offset: 2;
+  --displayLen: 30;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  font-size: 16px;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* Dark theme variables (toggled with .dark on body) */
+body.dark{
+  --bg: #07121a;        /* dark solid background — fixed so no weird gradient */
+  --card: #0b1620;
+  --muted: #9fb0c6;
+  --text: #e6f2ff;
+  --accent: #46d6a1;
+  --danger: #ff7b7b;
+  --glass: rgba(255,255,255,0.03);
+  --shadow: 0 10px 40px rgba(0,0,0,0.6);
+}
+
+/* ----- Layout ----- */
+* { box-sizing: border-box; }
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);}
+.todomvc-wrapper{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:48px;transition:background 300ms ease;}
+.todoapp{
+  width:880px;
+  max-width:96%;
+  background:var(--card); /* simpler solid card color keeps contrast in dark mode */
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:28px;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(0,0,0,0.06);
+  transition:all 300ms ease;
+  position:relative;
+  overflow:visible;
+}
+
+/* card accent stripe */
+.todoapp::before{
+  content:'';
+  position:absolute;
+  left:0;top:0;
+  width:6px;height:100%;
+  border-top-left-radius:var(--radius);
+  border-bottom-left-radius:var(--radius);
+  background:linear-gradient(180deg,var(--accent), rgba(0,0,0,0.08));
+  transform-origin:left;
+  transition:opacity 300ms;
+}
+
+/* ----- Header ----- */
+.header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-0.02em}
+.hint{font-size:13px;color:var(--muted);margin-top:6px}
+
+/* ----- Controls ----- */
+.controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.controls .group{display:flex;flex-direction:column;gap:8px}
+.controls label{font-size:13px;color:var(--muted)}
+.input{
+  display:flex;gap:10px;align-items:center;
+  background:transparent;
+  padding:6px;border-radius:10px;border:1px solid rgba(0,0,0,0.04);
+}
+.input input[type="number"], .input input[type="text"]{
+  background:transparent;border:none;outline:none;font-size:15px;color:var(--text);
+  width:130px;
+  -moz-appearance: textfield;
+}
+.input input[type="text"]{ width:420px; font-family: inherit; }
+
+/* nice input focus effect */
+input:focus{box-shadow:0 6px 18px rgba(11,139,111,0.06);border-radius:8px}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+
+/* ----- Status / Result area ----- */
+.view { margin-top:14px; }
+.main{
+  margin-top:14px;padding:16px;border-radius:10px;background:transparent;
+  border:1px solid rgba(0,0,0,0.04);
+}
+.pi-display{
+  font-family: "Space Mono", monospace;
+  font-size:15px;
+  line-height:1.45;
+  padding:8px 6px;
+  border-radius:8px;
+  background:transparent;
+  white-space:pre-wrap;
+  word-break:break-word;
+  transition:all 220ms ease;
+  color:var(--text);
+}
+
+/* peek area */
+.peek{
+  margin-top:12px;
+  display:flex;flex-direction:column;gap:8px;
+}
+
+/* blurred state for peek */
+.peek .pi-display.blurred{
+  filter: blur(6px) saturate(0.7);
+  opacity:0.65;
+  user-select:none;
+}
+
+/* stats */
+.stats{margin-top:12px;border-radius:10px;padding:12px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;background:transparent;border:1px solid rgba(0,0,0,0.04)}
+.stat-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;background:transparent}
+.stat-title{font-size:13px;color:var(--muted)}
+.stat-value{font-weight:600;font-family:"Space Mono",monospace}
+
+/* valid/invalid states - keep same border-color cues, animated */
+.valid{outline:2px solid rgba(70,214,161,0.12); box-shadow:0 6px 20px rgba(70,214,161,0.04)}
+.invalid{outline:2px solid rgba(255,123,123,0.12); box-shadow:0 6px 20px rgba(255,123,123,0.03)}
+
+/* small UI utilities */
+.small{font-size:13px;color:var(--muted)}
+.footer{margin-top:10px;font-size:12px;color:var(--muted);text-align:right}
+
+/* toggle */
+.toggle{
+  display:inline-flex;align-items:center;gap:8px;background:transparent;border:none;cursor:pointer;padding:6px 10px;border-radius:999px;font-weight:600;
+  color:var(--muted);
+}
+.toggle .dot{width:34px;height:20px;background:rgba(0,0,0,0.06);border-radius:999px;display:inline-flex;align-items:center;padding:3px;transition:all 240ms}
+.toggle .dot .pin{width:14px;height:14px;border-radius:50%;background:var(--card);box-shadow:0 2px 6px rgba(0,0,0,0.08);transition:all 240ms}
+body.dark .toggle .dot{background:rgba(255,255,255,0.06)}
+body.dark .toggle.on .pin{transform:translateX(14px);background:var(--accent)}
+
+/* eye button */
+.eye-btn{
+  display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;border:1px solid rgba(0,0,0,0.04);
+  background:transparent;color:var(--muted);cursor:pointer;font-size:13px;
+}
+.eye-btn.on{color:var(--accent);border-color:rgba(70,214,161,0.12);box-shadow:0 6px 20px rgba(70,214,161,0.04)}
+
+/* responsive */
+@media (max-width:720px){
+  .input input[type="text"]{ width:220px}
+  .controls{flex-direction:column;align-items:flex-start}
+  .stats{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+  <div class="todomvc-wrapper">
+    <section class="todoapp" role="application" aria-labelledby="title">
+      <div class="header-row">
+        <div>
+          <h1 id="title">Pi Rote</h1>
+          <div class="hint">Train your short-term memory — type digits of π, see instant assessment and stats.</div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px">
+          <button id="darkToggle" class="toggle" aria-pressed="false" title="Toggle dark mode">
+            <span class="small">Dark</span>
+            <span class="dot" aria-hidden="true"><span class="pin"></span></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="view" role="main">
+        <div class="controls">
+          <div class="group">
+            <label for="headstart" class="small">How many digits headstart:</label>
+            <div class="input"><input id="headstart" type="number" value="0" min="0" inputmode="numeric" aria-label="Headstart digits" /></div>
+          </div>
+
+          <div class="group">
+            <label for="peekAhead" class="small">Peek ahead:</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div class="input"><input id="peekAhead" type="number" value="0" min="0" inputmode="numeric" aria-label="Peek ahead count" /></div>
+              <!-- Eye toggle for peek -->
+              <button id="peekEye" class="eye-btn" aria-pressed="false" title="Toggle peek visibility">👁️</button>
+            </div>
+          </div>
+
+          <div style="flex:1"></div>
+
+          <div class="group" style="align-items:flex-end">
+            <label class="small">Grouping: <strong>5</strong> · Offset: <strong>2</strong></label>
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <ul style="list-style:none;padding:0;margin:0">
+            <li class="small">Enter memorised digits here (but look lower for assessment):</li>
+            <li style="margin-top:8px">
+              <div class="input" style="width:100%;padding:6px 10px;">
+                <input id="piInput" type="text" value="" autocomplete="off" aria-label="Pi input" placeholder="Type digits here (e.g. 3.14...)" />
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="main" aria-live="polite" style="margin-top:14px">
+          <ul style="list-style:none;padding:0;margin:0">
+            <li class="small">Pi digits (a glimpse of the tail, X's for incorrect digits):</li>
+            <li style="margin-top:10px">
+              <div id="compareResult" class="pi-display" aria-atomic="true"></div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="peek">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="small">Peek ahead:</div>
+            <div class="small" id="peekHint" aria-hidden="true">Toggle eye to reveal</div>
+          </div>
+          <div id="peekResult" class="pi-display blurred" aria-hidden="false"></div>
+        </div>
+
+        <div class="stats" role="status" aria-live="polite" style="margin-top:12px">
+          <div class="stat-item"><div class="stat-title">Digits entered so far</div><div id="enteredCount" class="stat-value">0</div></div>
+          <div class="stat-item"><div class="stat-title">Correct</div><div id="correctCount" class="stat-value">0</div></div>
+          <div class="stat-item"><div class="stat-title">Errors (current)</div><div id="errorsCurrent" class="stat-value">0</div></div>
+          <div class="stat-item"><div class="stat-title">Errors (cumulative)</div><div id="errorsCum" class="stat-value">0</div></div>
+          <div class="stat-item"><div class="stat-title">Total</div><div id="totalCount" class="stat-value">0</div></div>
+          <div class="stat-item" style="align-items:center"><div class="stat-title">Display</div><div class="small">window: <strong>30</strong></div></div>
+        </div>
+
+        <div class="footer">UI only — functionality unchanged (grouping=5, offset=2)</div>
+      </div>
+    </section>
+  </div>
+
+<script>
+/* ------------------------
+   Functionality (unchanged)
+   ------------------------ */
+const piString = "3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384460955058223172535940812848111745028410270193852110555964462294895493038196442881097566593344612847564823378678316527120190914564856692346034861045432664821339360726024914127372458700660631558817488152092096282925409171536436789259036001133053054882046652138414695194151160943305727036575959195309218611738193261179310511854807446237996274956735188575272489122793818301194912983367336244065664308602139494639522473719070217986094370277053921717629317675238467481846766940513200056812714526356082778577134275778960917363717872146844090122495343014654958537105079227968925892354201995611212902196086403441815981362977477130996051870721134999999837297804995105973173281609631859502445945534690830264252230825334468503526193118817101000313783875288658753320838142061717766914730359825349042875546873115956286388235378759375195778185778053217122680661300192787661119590921642019";
+const groupSize = 5;
+const OFFSET = 2;
+const displayLength = 30;
+
+function groupString(off, s){
+  if(!s) return "";
+  off = Math.max(0, off|0);
+  const first = s.slice(0, off);
+  const rest = s.slice(off);
+  const groups = rest.match(new RegExp('.{1,' + groupSize + '}', 'g')) || [];
+  return first + (groups.length ? ' ' + groups.join(' ') : '');
+}
+
+function compareForPi(headstart, input){
+  const head = piString.slice(0, Math.max(0, headstart));
+  const expected = piString.slice(headstart);
+  let compared = "";
+  for(let i=0;i<input.length && i<expected.length;i++){
+    compared += input[i] === expected[i] ? input[i] : "X";
+  }
+  const full = head + compared;
+  const grouped = groupString(OFFSET, full);
+  if(grouped.length <= displayLength) return grouped;
+  return grouped.slice(grouped.length - displayLength);
+}
+
+function peekAhead(peekCount, currentCount){
+  const start = Math.max(0, currentCount);
+  const taken = piString.slice(start, start + Math.max(0, peekCount));
+  const off = ((OFFSET - currentCount) % groupSize + groupSize) % groupSize;
+  return groupString(off, taken);
+}
+
+function countCorrect(headstart, input){
+  const expected = piString.slice(headstart);
+  let cnt = 0;
+  for(let i=0;i<input.length && i<expected.length;i++){
+    if(input[i] === expected[i]) cnt++;
+  }
+  return cnt;
+}
+
+/* ------------------------
+   DOM wiring + state
+   ------------------------ */
+document.addEventListener("DOMContentLoaded", () => {
+  const headEl = document.getElementById("headstart");
+  const peekEl = document.getElementById("peekAhead");
+  const piEl = document.getElementById("piInput");
+  const compareEl = document.getElementById("compareResult");
+  const peekResEl = document.getElementById("peekResult");
+  const enteredEl = document.getElementById("enteredCount");
+  const correctEl = document.getElementById("correctCount");
+  const errorsCurEl = document.getElementById("errorsCurrent");
+  const errorsCumEl = document.getElementById("errorsCum");
+  const totalEl = document.getElementById("totalCount");
+  const darkToggle = document.getElementById("darkToggle");
+  const peekEye = document.getElementById("peekEye");
+  const body = document.body;
+  const wrapper = document.querySelector('.todomvc-wrapper');
+  wrapper.style.visibility = 'visible';
+
+  /* cumulative errors state (same logic as Haskell foldDyn incrementIfNewError) */
+  let prevErrorCount = 0;
+  let cumErrors = 0;
+
+  function parseNumberInput(el){
+    const v = el.value;
+    if(v === "" || v === null) return null;
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  }
+
+  function updateAll(){
+    const headVal = parseNumberInput(headEl);
+    const peekVal = parseNumberInput(peekEl);
+    const head = headVal === null ? 0 : headVal;
+    const peek = peekVal === null ? 0 : peekVal;
+
+    /* style number inputs as valid/invalid (keeps original visual signal) */
+    if(parseNumberInput(headEl) === null){ headEl.classList.add("invalid"); headEl.classList.remove("valid"); }
+    else { headEl.classList.add("valid"); headEl.classList.remove("invalid"); }
+
+    if(parseNumberInput(peekEl) === null){ peekEl.classList.add("invalid"); peekEl.classList.remove("valid"); }
+    else { peekEl.classList.add("valid"); peekEl.classList.remove("invalid"); }
+
+    const input = piEl.value || "";
+    const inputLen = input.length;
+    const correct = countCorrect(head, input);
+    const errorsCurrent = Math.max(0, inputLen - correct);
+
+    if(errorsCurrent > prevErrorCount){
+      cumErrors += errorsCurrent - prevErrorCount;
+    }
+    prevErrorCount = errorsCurrent;
+
+    if(errorsCurrent === 0){
+      piEl.classList.remove("invalid");
+      piEl.classList.add("valid");
+    } else {
+      piEl.classList.remove("valid");
+      piEl.classList.add("invalid");
+    }
+
+    compareEl.textContent = compareForPi(head, input);
+    peekResEl.textContent = peekAhead(peek, head + inputLen);
+    enteredEl.textContent = String(inputLen);
+    correctEl.textContent = String(correct);
+    errorsCurEl.textContent = String(errorsCurrent);
+    errorsCumEl.textContent = String(cumErrors);
+    totalEl.textContent = String(head + inputLen);
+  }
+
+  headEl.addEventListener("input", updateAll);
+  peekEl.addEventListener("input", updateAll);
+  piEl.addEventListener("input", updateAll);
+
+  /* ---------- dark mode logic (persisted) ---------- */
+  const DARK_KEY = "piRoteDarkMode_v1";
+  function applyDark(d){
+    if(d){ body.classList.add("dark"); darkToggle.classList.add("on"); darkToggle.setAttribute("aria-pressed","true"); }
+    else { body.classList.remove("dark"); darkToggle.classList.remove("on"); darkToggle.setAttribute("aria-pressed","false"); }
+  }
+
+  try {
+    const stored = localStorage.getItem(DARK_KEY);
+    if(stored !== null) applyDark(stored === "1");
+    else applyDark(false);
+  } catch(e){ applyDark(false); }
+
+  darkToggle.addEventListener("click", () => {
+    const isDark = body.classList.contains("dark");
+    applyDark(!isDark);
+    try { localStorage.setItem(DARK_KEY, !isDark ? "1" : "0"); } catch(e){}
+  });
+
+  /* ---------- peek eye toggle logic (persisted) ---------- */
+  const PEEK_KEY = "piRotePeekVisible_v1";
+  function applyPeekVisible(v){
+    if(v){
+      peekResEl.classList.remove("blurred");
+      peekEye.classList.add("on");
+      peekEye.setAttribute("aria-pressed","true");
+    } else {
+      peekResEl.classList.add("blurred");
+      peekEye.classList.remove("on");
+      peekEye.setAttribute("aria-pressed","false");
+    }
+  }
+
+  try {
+    const storedPeek = localStorage.getItem(PEEK_KEY);
+    if(storedPeek !== null) applyPeekVisible(storedPeek === "1");
+    else applyPeekVisible(false); // default: hidden/blurred
+  } catch(e){ applyPeekVisible(false); }
+
+  peekEye.addEventListener("click", () => {
+    const visible = !peekResEl.classList.contains("blurred");
+    applyPeekVisible(!visible);
+    try { localStorage.setItem(PEEK_KEY, !visible ? "1" : "0"); } catch(e){}
+  });
+
+  /* keyboard accessibility: space/enter toggles the eye */
+  peekEye.addEventListener("keydown", (ev) => {
+    if(ev.key === " " || ev.key === "Enter"){ ev.preventDefault(); peekEye.click(); }
+  });
+
+  /* initialize */
+  updateAll();
+});
+</script>
+</body>
+</html>
